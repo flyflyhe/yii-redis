@@ -235,6 +235,25 @@ class Connection extends Component
     public function __call($name, $params)
     {
         $this->open();
+        if ($this->retries > 0) {
+            $tries = $this->retries;
+            while ($tries-- > 0) {
+                try {
+                    return $this->socket->$name(...$params);
+                } catch (\RedisException $e) {
+                    \Yii::error($e, __METHOD__);
+                    // backup retries, fail on commands that fail inside here
+                    $retries = $this->retries;
+                    $this->retries = 0;
+                    $this->close();
+                    if ($this->retryInterval > 0) {
+                        usleep($this->retryInterval);
+                    }
+                    $this->open();
+                    $this->retries = $retries;
+                }
+            }
+        }
         return $this->socket->$name(...$params);
     }
 }
