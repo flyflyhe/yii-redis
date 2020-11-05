@@ -7,6 +7,14 @@ use yii\base\Component;
 use yii\helpers\ArrayHelper;
 use yii\helpers\Inflector;
 
+/**
+ * @property string $driverName Name of the DB driver. This property is read-only.
+ * @property bool $isActive Whether the DB connection is established. This property is read-only.
+ * @property string $connectionString
+ * @property Redis|false $socket
+ * Class Connection
+ * @package yii\redis
+ */
 class Connection extends Component
 {
     /**
@@ -159,12 +167,15 @@ class Connection extends Component
         \Yii::debug('Opening redis DB connection: ' . $connection, __METHOD__);
 
         $redis = new \Redis();
-        $redis->connect($this->hostname, $this->port, $this->connectionTimeout, $this->retryInterval, $this->dataTimeout);
+        if (!$redis->connect($this->hostname, $this->port, $this->connectionTimeout, $this->retryInterval, $this->dataTimeout)) {
+            throw new \RedisException("connect failed $connection");
+        }
         if ($this->password) {
             $redis->auth($this->password);
         }
         $redis->select($this->database);
-        $this->_pool[$connection] = $redis;
+        $this->_pool[$this->connectionString] = $redis;
+        $this->initConnection();
     }
 
     /**
@@ -219,19 +230,11 @@ class Connection extends Component
      * @param string $name name of the missing method to execute
      * @param array $params method call arguments
      * @return mixed
+     * @throws \RedisException
      */
     public function __call($name, $params)
     {
-        $redisCommand = strtoupper(Inflector::camel2words($name, false));
         $this->open();
-        /**
-         * @var socket Redis
-         */
-        $socket = $this->socket;
-        if (method_exists($socket, $redisCommand)) {
-            $socket->$redisCommand(...$params);
-        }
-
-        return parent::__call($name, $params);
+        return $this->socket->$name(...$params);
     }
 }
