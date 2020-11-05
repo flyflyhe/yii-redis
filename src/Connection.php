@@ -239,7 +239,7 @@ class Connection extends Component
             $tries = $this->retries;
             while ($tries-- > 0) {
                 try {
-                    return $this->socket->$name(...$params);
+                    return call_user_func([$this->socket, $name], ...$params);
                 } catch (\RedisException $e) {
                     \Yii::error($e, __METHOD__);
                     // backup retries, fail on commands that fail inside here
@@ -254,6 +254,6 @@ class Connection extends Component
                 }
             }
         }
-        return $this->socket->$name(...$params);
+        return call_user_func([$this->socket, $name], ...$params);
     }
 }
