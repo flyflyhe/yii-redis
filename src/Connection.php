@@ -102,6 +102,10 @@ class Connection extends Component
      */
     public $retryInterval = 0;
 
+    public $pconnect = false;
+
+    public $persistentId = null;
+
     /**
      * @var array redis redirect socket connection pool
      */
@@ -167,9 +171,17 @@ class Connection extends Component
         \Yii::debug('Opening redis DB connection: ' . $connection, __METHOD__);
 
         $redis = new \Redis();
-        if (!$redis->connect($this->hostname, $this->port, $this->connectionTimeout, $this->retryInterval, $this->dataTimeout)) {
-            throw new \RedisException("connect failed $connection");
+
+        if ($this->pconnect) {
+            if (!$redis->pconnect($this->hostname, $this->port, $this->connectionTimeout, $this->persistentId, $this->retryInterval, $this->dataTimeout)) {
+                throw new \RedisException("connect failed $connection");
+            }
+        } else {
+            if (!$redis->connect($this->hostname, $this->port, $this->connectionTimeout, $this->retryInterval, $this->dataTimeout)) {
+                throw new \RedisException("connect failed $connection");
+            }
         }
+
         if ($this->password) {
             $redis->auth($this->password);
         }
